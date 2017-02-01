@@ -1,0 +1,63 @@
+REM Project: BMP to PNG
+REM Created: 4/22/2007 7:37:13 AM
+REM
+REM ***** Main Source File *****
+REM
+
+local path as string
+local bmpname as string
+local pngname as string
+
+`get pathname of drag-and-dropped image
+path = left$(right$(cl$(), len(cl$()) - 1), len(cl$()) - 2)
+
+`get into the image's directory and record the filename excluding the pathname
+for char = len(path) to 1 step -1
+  if mid$(path, char) = "\"
+    `backslash marks ending of path and beginning of file name
+    set dir left$(path, char)
+    bmpname = right$(path, len(path) - char)
+    exit
+  endif
+next char
+
+`calculate new filename
+pngname = left$(bmpname, len(bmpname) - 4) + ".png"
+
+load image bmpname, 1, 1
+
+`get the width and height of the image memblock
+make memblock from image 1, 1
+width = memblock dword(1,0)
+height = memblock dword(1,4)
+
+`skip over the height/width/depth bytes
+spot = 12
+
+`for each pixel...
+for x = 1 to width
+   for y = 1 to height
+
+      `record color and alpha
+      blue = memblock byte(1, spot)
+      green = memblock byte(1, spot+1)
+      red = memblock byte(1, spot+2)
+      alpha = memblock byte(1, spot+3)
+
+      `if the pixel is purple set it to transparent
+      if red = 255 and green = 0 and blue = 255
+         write memblock byte 1, spot, 255
+         write memblock byte 1, spot+1, 255
+         write memblock byte 1, spot+2, 255
+         write memblock byte 1, spot+3, 0
+      endif
+
+      `move to the next pixel
+      inc spot, 4
+
+   next y
+next x
+
+`save the new png
+make image from memblock 1, 1
+save image pngname, 1
